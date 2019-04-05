@@ -1,0 +1,7 @@
+sh /h/u2/csc343h/winter/public_html/assignments/a2/self_test/compile `pwd`
+sh /h/u2/csc343h/winter/public_html/assignments/a2/self_test/run `pwd` $USER
+
+javac -cp /local/packages/jdbc-postgresql/postgresql-9.4.1208.jre6.jar SelfTest.java Assignment2.java
+
+java -cp /local/packages/jdbc-postgresql/postgresql-9.4.1208.jre6.jar: SelfTest csc343h-$USER $USER 
+

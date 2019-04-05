@@ -1,0 +1,24 @@
+DROP SCHEMA IF EXISTS Jobs CASCADE;
+CREATE SCHEMA Jobs;
+SET search_path TO Jobs;
+
+CREATE TABLE Posting (
+	pID varchar(10) PRIMARY KEY,
+	position varchar(50) 
+);
+
+
+CREATE TABLE reqSkill (
+	PRIMARY KEY (pID, what),
+	pID varchar(10) REFERENCES Posting,
+	what varchar(30), 
+	level integer,
+	importance integer
+	
+);
+
+CREATE TABLE Questions (
+	qID integer PRIMARY KEY,
+	pID varchar(10) REFERENCES Posting,
+	question varchar(100)
+);

@@ -1,0 +1,2 @@
+sh /h/u2/csc343h/winter/public_html/assignments/a2/self_test/compile `pwd`
+sh /h/u2/csc343h/winter/public_html/assignments/a2/self_test/run `pwd` $USER

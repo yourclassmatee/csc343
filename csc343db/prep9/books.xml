@@ -1,0 +1,29 @@
+<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE Books SYSTEM "books.dtd">
+
+<Books>
+
+<Book Title="AAA" Year="2015">
+	<Rating>2</Rating>
+	<Rating>5</Rating>
+	<Author>AAAA</Author>
+	<Review Text="blablabla"/>
+</Book>
+
+<Book Title="BBB" Year="2015">
+	<Rating>2</Rating>
+	<Rating>5</Rating>
+	<Author>BBBB</Author>
+	<Review Text="blablablabla"/>
+</Book>
+
+<Book Title="CCC" Year="2015">
+	<Rating>2</Rating>
+	<Rating>5</Rating>
+	<Author>CCCC</Author>
+	<Review Text="blablabla"/>
+</Book>
+
+
+
+</Books>

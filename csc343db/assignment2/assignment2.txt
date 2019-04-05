@@ -1,0 +1,649 @@
+-- Q1 
+/*
+SELECT tempFrom.client_id as client_id, tempFrom.email as email, count(tempCount) AS months
+FROM(
+  SELECT Client.client_id, Client.email, count(Request.request_id) AS tempCount
+  FROM Client, Request
+  WHERE CLient.client_id=Request.client_id
+  GROUP BY Client.client_id, to_char(extract(month from datetime),'99')
+                              ||to_char(extract(year from datetime), '9999')
+  ) tempFrom
+GROUP BY tempFrom.client_id, tempFrom.email;
+*/
+
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+-- Q2
+/*
+CREATE VIEW Spend500 AS (
+  SELECT Request.client_id, sum(Billed.amount) AS sum2014
+  FROM Request NATURAL JOIN Billed
+  WHERE extract(year from datetime) < 2014
+  GROUP BY Request.client_id
+);
+
+CREATE VIEW Ride2014 AS (
+  SELECT Request.client_id, count(Request.request_id) AS rideNum
+  FROM Request 
+  WHERE extract(year from datetime) = 2014
+  GROUP BY Request.client_id
+  HAVING count(Request.request_id) > 1 AND count(Request.request_id) < 10
+);
+
+CREATE VIEW Ride2015 AS (
+  SELECT Request.client_id, count(Request.request_id) AS rideNum
+  FROM Request 
+  WHERE extract(year from datetime) = 2015
+  GROUP BY Request.client_id
+);
+  
+SELECT Client.client_id AS client_id, 
+        (Client.firstname || ' ' || Client.surname) AS name,
+        Spend500.sum2014 AS billed, 
+        Ride2014.rideNum - Ride2015.rideNum AS decline
+FROM Client, Spend500, Ride2014, Ride2015
+WHERE Client.client_id = Spend500.client_id AND 
+      Client.client_id = Ride2014.client_id AND 
+      Client.client_id = Ride2015.client_id AND
+      Ride2014.rideNum > Ride2015.rideNum;
+*/
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Q3
+/*
+CREATE VIEW DriverDuration AS (
+  SELECT  Dispatch.driver_id, 
+          date_trunc('day', min(Pickup.datetime)) AS durationDay, 
+          sum(Dropoff.datetime - Pickup.datetime) AS Duration
+  FROM Dispatch, Pickup, Dropoff
+  WHERE Dispatch.request_id = Pickup.request_id AND
+        Dispatch.request_id = Dropoff.request_id
+  GROUP BY Dispatch.driver_id, 
+            date_trunc('day', Pickup.datetime) 
+);
+
+
+CREATE VIEW DriverBreak AS (
+  SELECT Dp1.driver_id, date_trunc('day', min(Pickup.datetime)) AS breakDay, 
+        sum (
+              (
+              SELECT Dropoff.datetime
+              FROM Dropoff, Dispatch AS Dp2
+              WHERE Dropoff.datetime > Pickup.datetime AND
+                    Dropoff.request_id = Dp2.request_id AND
+                    Dp1.driver_id = Dp2.driver_id
+              ORDER BY Dropoff.datetime 
+              )
+              - Pickup.datetime
+            ) AS breakDuration
+  FROM Dispatch AS Dp1, Pickup
+  WHERE Dp1.request_id = Pickup.request_id
+  GROUP BY Dp1.driver_id, 
+    date_trunc('day', Pickup.datetime) 
+);
+    
+    
+
+CREATE VIEW DriverBreak15 AS (
+  SELECT DISTINCT Dp1.driver_id, date_trunc('day', min(Pickup.datetime)) AS breakDay
+  FROM Dispatch AS Dp1, Pickup
+  WHERE Dp1.request_id = Pickup.request_id AND
+        EXTRACT(EPOCH FROM (
+          SELECT Dropoff.datetime
+          FROM Dropoff, Dispatch AS Dp2
+          WHERE Dropoff.datetime > Pickup.datetime AND
+                Dropoff.request_id = Dp2.request_id AND
+                Dp1.driver_id = Dp2.driver_id
+          ORDER BY Dropoff.datetime 
+        )) 
+        - EXTRACT(EPOCH FROM Pickup.datetime) > 900
+  GROUP BY Dp1.driver_id, 
+    date_trunc('day', Pickup.datetime) 
+);
+
+
+SELECT DD1.driver_id AS driver,
+       to_char(extract(year from DD1.durationDay), '9999') ||
+       to_char(extract(month from DD1.durationDay),'99')   ||
+       to_char(extract(day from DD1.durationDay),'99') AS start,
+       DD1.Duration + DD2.Duration + DD3.Duration AS driving, 
+       DB1.breakDuration + DB2.breakDuration + DB3.breakDuration AS breaks
+FROM DriverDuration AS DD1, DriverDuration AS DD2, DriverDuration AS DD3,
+     DriverBreak AS DB1, DriverBreak AS DB2, DriverBreak AS DB3, 
+     DriverBreak15 AS DB15
+WHERE 
+       DD1.durationDay = DB1.breakDay AND
+       DD2.durationDay = DB2.breakDay AND
+       DD3.durationDay = DB3.breakDay AND
+        (DB1.breakDay = DB15.breakDay OR
+         DB2.breakDay = DB15.breakDay OR
+         DB3.breakDay = DB15.breakDay) AND
+       EXTRACT(EPOCH FROM DD1.Duration) > 43200 AND
+       EXTRACT(EPOCH FROM DD2.Duration) > 43200 AND
+       EXTRACT(EPOCH FROM DD3.Duration) > 43200 AND
+      (EXTRACT(EPOCH FROM DD2.durationDay) - EXTRACT(EPOCH FROM DD1.durationDay) = 86400) AND
+      (EXTRACT(EPOCH FROM DD3.durationDay) - EXTRACT(EPOCH FROM DD2.durationDay) = 86400)
+       ;
+      
+       */
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+-- Q4
+-- LIMIT 10 AND 5 !!!
+/*
+CREATE VIEW Driver10 AS
+(
+  SELECT Dispatch.driver_id
+  FROM Request, Dispatch
+  WHERE Request.request_id = Dispatch.request_id
+  GROUP BY Dispatch.driver_id
+  HAVING count(date_trunc('day', Request.datetime)) >= 10
+);
+
+CREATE VIEW Day10 AS
+(
+  SELECT Dispatch.driver_id, date_trunc('day', Request.datetime) AS days
+  FROM Request, Dispatch
+  WHERE Request.request_id = Dispatch.request_id
+  GROUP BY Dispatch.driver_id, date_trunc('day', Request.datetime)
+  ORDER BY date_trunc('day', Request.datetime)
+  LIMIT 10
+);
+
+
+CREATE VIEW Day5 AS
+(
+  SELECT Dispatch.driver_id, date_trunc('day', Request.datetime) AS days
+  FROM Request, Dispatch
+  WHERE Request.request_id = Dispatch.request_id
+  GROUP BY Dispatch.driver_id, date_trunc('day', Request.datetime)
+  ORDER BY date_trunc('day', Request.datetime)
+  LIMIT 5
+);
+
+CREATE VIEW DayLast5 AS 
+(
+  SELECT * FROM DAY10
+  EXCEPT 
+  SELECT * FROM DAY5
+);
+
+CREATE VIEW RideRating5 AS
+(
+  SELECT Day5.driver_id, avg(DriverRating.rating) AS rating
+  FROM Day5, Driver10, DriverRating, Dispatch
+  WHERE Day5.driver_id = Driver10.driver_id AND 
+        Day5.driver_id = Dispatch.driver_id AND
+        Dispatch.request_id = DriverRating.request_id AND
+        Day5.days = date_trunc('day', Dispatch.datetime)
+  GROUP BY Day5.driver_id
+);
+
+CREATE VIEW RideRatingLast5 AS
+(
+  SELECT DayLast5.driver_id, avg(DriverRating.rating) AS rating
+  FROM DayLast5, Driver10, DriverRating, Dispatch
+  WHERE DayLast5.driver_id = Driver10.driver_id AND 
+        DayLast5.driver_id = Dispatch.driver_id AND
+        Dispatch.request_id = DriverRating.request_id AND
+        DayLast5.days = date_trunc('day', Dispatch.datetime)
+  GROUP BY DayLast5.driver_id
+);
+
+SELECT  Driver.trained AS type, count(Driver.driver_id) AS number,
+        avg(RideRating5.rating) AS early, avg(RideRatingLast5.rating) AS late
+FROM Driver, RideRatingLast5, RideRating5
+WHERE Driver.driver_id = RideRatingLast5.driver_id AND
+      Driver.driver_id = RideRating5.driver_id
+GROUP BY Driver.trained
+ORDER BY type;
+*/
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Q5
+/*
+CREATE VIEW ClientTotal AS
+(
+  SELECT extract(year from Request.datetime) AS year, 
+        extract(month from Request.datetime) AS month, 
+        sum(Billed.amount) AS clientSum,
+        Client.client_id
+  FROM Request, Billed, Client
+  WHERE Request.request_id = Billed.request_id AND Request.client_id = Client.client_id
+  GROUP BY extract(year from Request.datetime), 
+            extract(month from Request.datetime), 
+            Client.client_id
+);
+
+CREATE VIEW MonthAvg AS
+(
+  SELECT year, month, 
+        avg(clientSum) AS average
+  FROM ClientTotal
+  GROUP BY year, month
+);
+
+
+CREATE VIEW JointAvg AS
+(
+  SELECT ClientTotal.client_id as client_id,
+        MonthAvg.year, 
+        MonthAvg.month,
+        MonthAvg.average, ClientTotal.clientSum 
+  FROM MonthAvg, ClientTotal
+  WHERE MonthAvg.year = ClientTotal.year AND
+         MonthAvg.month = ClientTotal.month
+);
+
+
+CREATE TABLE Result (
+  client_id integer,
+  month varchar(7),
+  clientSum real,
+  comparison varchar(12)
+) ;
+
+
+CREATE VIEW Below AS
+(
+  SELECT year, 
+        month,
+        average, clientSum, client_id
+  FROM JointAvg
+  WHERE clientSum < average
+);
+
+CREATE VIEW AtAbove AS
+(
+  SELECT client_id, year, 
+        month,
+        average, clientSum 
+  FROM JointAvg
+  WHERE clientSum >= average
+);
+
+CREATE TABLE Combined(
+    client_id integer,
+    year integer,
+    month integer,
+    average real,
+    clientSum real,
+    comparison varchar(12)
+);
+
+INSERT INTO Combined(client_id ,year, month, average, clientSum)
+    SELECT *
+    FROM Below;
+    
+INSERT INTO Combined(client_id ,year, month, average, clientSum)
+    SELECT *
+    FROM AtAbove;
+
+UPDATE Combined SET comparison='below' WHERE clientSum < average;
+
+UPDATE Combined SET comparison='at or above' WHERE clientSum >= average;
+
+SELECT DISTINCT client_id, year || ' ' || month AS month, clientSum AS total, comparison
+FROM Combined
+ORDER BY month, clientSum asc;
+
+*/
+
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Q6
+/*
+CREATE VIEW ClientRides AS
+(
+    SELECT Client.client_id, extract(year FROM Request.datetime) AS year, count(Request.request_id) AS numRides
+    FROM Client, Request
+    WHERE Request.client_id=Client.client_id]
+    GROUP BY Client.client_id, extract(year FROM Request.datetime)
+);
+
+CREATE VIEW Top AS
+(
+    SELECT client_id, year, numRides, DENSE_RANK() OVER(ORDER BY numRides ASC) AS rk
+    FROM ClientRides
+    GROUP BY Client.client_id, extract(year FROM Request.datetime)
+);
+
+
+CREATE VIEW Bottom AS
+(
+    SELECT client_id, year, numRides, DENSE_RANK() OVER(ORDER BY numRides DESC) AS rk
+    FROM ClientRides
+    GROUP BY Client.client_id, extract(year FROM Request.datetime)
+);
+
+CREATE TABLE Combined(
+    client_id integer,
+    year integer,
+    numRides integer
+); 
+
+INSERT INTO Combined (client_id, year, numRides)
+    SELECT *
+    FROM Top
+    WHERE rk = 1 or rk = 2 or rk = 3;
+
+INSERT INTO Combined (client_id, year, numRides)
+    SELECT *
+    FROM Bottom
+    WHERE rk = 1 or rk = 2 or rk = 3;
+
+SELECT DISTINCT *
+FROM Combined
+ORDER BY numRides, year
+*/
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Q7
+/*
+CREATE VIEW DriverRating AS
+(
+  SELECT driver_id, 
+         sum(CASE WHEN DriverRating.rating=5 THEN 1 ELSE 0 END ) AS r5,
+         sum(CASE WHEN DriverRating.rating=4 THEN 1 ELSE 0 END ) AS r4,
+         sum(CASE WHEN DriverRating.rating=3 THEN 1 ELSE 0 END ) AS r3,
+         sum(CASE WHEN DriverRating.rating=2 THEN 1 ELSE 0 END ) AS r2,
+         sum(CASE WHEN DriverRating.rating=1 THEN 1 ELSE 0 END ) AS r1,
+         sum(CASE WHEN DriverRating.rating=2 THEN 1 ELSE 0 END ) AS r0
+  FROM Driver, Dispatch, DriverRating
+  WHERE DriverRating.request_id = Dispatch.request_id AND
+       Dispatch.driver_id = Driver.driver_id
+  Group By Driver.driver_id
+);
+
+CREATE VIEW DriverWithNull AS
+(
+  SELECT driver_id, r5, r4, r3, r2, r1, r0
+  FROM Driver LEFT JOIN DriverRating
+);
+
+UPDATE DriverWIthNull SET r5=null WHERE r5=0;
+UPDATE DriverWIthNull SET r4=null WHERE r4=0;
+UPDATE DriverWIthNull SET r3=null WHERE r3=0;
+UPDATE DriverWIthNull SET r2=null WHERE r2=0;
+UPDATE DriverWIthNull SET r1=null WHERE r1=0;
+UPDATE DriverWIthNull SET r0=null WHERE r0=0;
+
+SELECT *
+FROM DriverWithNull
+ORDER BY r5, r4, r3, r2, r1, r0;
+*/
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Q8
+/*
+CREATE VIEW Reciprocal AS
+(
+    SELECT Request.client_id, Dispatch.driver_id, 
+            Dispatch.request_id, DriverRating.rating AS CtoD, ClientRating.rating AS DtoC
+    FROM Request, Dispatch, DriverRating, ClientRating
+    WHERE Request.request_id=Dispatch.request_id AND
+          Dispatch.request_id=DriverRating.request_id AND
+          DriverRating.request_id=ClientRating.request_id
+);
+
+CREATE VIEW Averages AS
+(
+    SELECT client_id, count(driver_id) AS reciprocals, avg(CtoD) AS CDavg, avg(DtoC) AS DCavg
+    FROM Reciprocal
+    GROUP BY client_id
+);
+
+SELECT client_id, reciprocals, (CDavg - DCavg) AS difference
+FROM Averages;
+*/
+----------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Q9
+/*
+CREATE VIEW AllPairs AS
+(
+    SELECT DISTINCT Client.client_id, Driver.driver_id
+    FROM Client, Driver
+);
+
+CREATE VIEW ActualPairs AS
+(
+    SELECT DISTINCT Request.client_id, Dispatch.driver_id
+    FROM Request, Dispatch, DriverRating
+    WHERE Request.request_id=Dispatch.dispatch_id AND
+            DriverRating.request_id=Request.request_id
+);
+
+CREATE VIEW NotWantedClients AS
+(
+    SELECT *
+    FROM AllPairs
+    
+    EXCEPT
+    
+    SELECT *
+    FROM ActualPairs
+);
+
+
+CREATE VIEW WantedClients AS
+(
+    SELECT client_id
+    FROM Client
+    
+    EXCEPT
+
+    SELECT client_id
+    FROM NotWantedClients
+);
+
+SELECT DISTINCT Client.client_id, Client.email
+FROM Client, WantedClients
+WHERE Client.client_id=WantedClients.client_id
+ORDER BY Client.email
+
+*/
+
+----------------------------------------------------------------------------------------------------------
+
+-- Q10
+CREATE VIEW fly4 AS
+(
+  SELECT Dispatch.driver_id, extract(month from Request.datetime) as month, 
+          sum(begin.location <@> finish.location) as mileage, 
+          sum(Billed.amount) as billing
+  FROM Request, Place as begin, Place as finish,  Driver, Dispatch, Billed
+  WHERE Request.request_id=Dispatch.request_id AND
+        begin.name=Request.source AND finish.name=Request.destination AND
+        Billed.request_id=Request.request_id
+  GROUP BY Dispatch.driver_id, extract(year from Request.datetime), extract(month from Request.datetime)
+  HAVING extract(year from Request.datetime)=2014
+
+);
+
+
+CREATE VIEW fly5 AS
+(
+  SELECT Dispatch.driver_id, extract(month from Request.datetime) as month, 
+          sum(begin.location <@> finish.location) as mileage, 
+          sum(Billed.amount) as billing
+  FROM Request, Place as begin, Place as finish,  Driver, Dispatch, Billed
+  WHERE Request.request_id=Dispatch.request_id AND
+        begin.name=Request.source AND finish.name=Request.destination AND
+        Billed.request_id=Request.request_id
+  GROUP BY Dispatch.driver_id, extract(year from Request.datetime), extract(month from Request.datetime)
+  HAVING extract(year from Request.datetime)=2015
+);
+
+CREATE VIEW crow20142015 AS
+(
+  SELECT fly4.driver, fly4.month, fly4.mileage as m2014, fly4.billing as b2014,
+          fly4.mileage as m2015, fly4.billing as b2015
+  FROM fly4, fly5
+  WHERE fly4.driver_id=fly5.driver_id AND fly4.month=fly5.month
+);
+
+
+
+CREATE TABLE Result(
+  driver_id integer,
+  month integer,
+  mileage_2014 real,
+  billings_2014 real,
+  mileage_2015 real,
+  billings_2015 real,
+  billings_increase as real,
+  mileage_increase as real
+);
+
+
+INSERT INTO Result (driver_id, month, mileage_2014, billings_2014, mileage_2015, billings_2015)
+  SELECT *
+  FROM crow20142015;
+  
+
+UPDATE Result 
+SET billings_increase=billings_2015 - billings_2014,
+    mileage_increase=mileage_2015 - mileage_2014;
+ 
+SELECT *
+FROM Result
+ORDER BY driver_id ASC, month ASC;
+  
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+
+
+
+
